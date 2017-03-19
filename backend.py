@@ -1,42 +1,38 @@
-import requests
-from db import Article, Video, saveArticle, saveVideo
+import dbPopulator
+import feedGenerator
+import feedServer
 
-startIndex = 0
-count = 20
+import time
+import threading
+import sys
 
-while (startIndex <= 300):
-    r = requests.get('http://ign-apis.herokuapp.com/articles?startIndex='
-            + str(startIndex)
-            + '0&count='
-            + str(count))
-    j = r.json()
+def popAndGen():
+    print('Populating DB')
+    dbPopulator.populate()
+    print('Building Feed')
+    feed = feedGenerator.generate()
+    target = open('rss.xml', 'w')
+    target.truncate() # overwrite file
+    target.write(feed)
 
-    for item in j['data']:
-        headline = item['metadata']['headline']
-        subHeadline = item['metadata']['subHeadline']
-        link = "ign.com/articles/" + item['metadata']['slug']
-        a = Article(headline = headline, subHeadline = subHeadline, link = link)
-        saveArticle(a)
+print('Starting rss generator and server')
+print('Press ctl + c to exit')
+popAndGen()
 
-    startIndex += count
+# kick off a server in a seperate thread
+serverThread = threading.Thread(target=feedServer.startServer)
+serverThread.setDaemon(True) # allows program to exit with thread running
+serverThread.start()
 
+# update the database and feed once an hour
+while True:
+    try:
+        print('Sleeping...')
+        # time.sleep(3600)
+        time.sleep(60)
+        popAndGen()
 
-startIndex = 0
-count = 20
-
-while (startIndex <= 300):
-    r = requests.get('http://ign-apis.herokuapp.com/videos?startIndex='
-            + str(startIndex)
-            + '0&count='
-            + str(count))
-    j = r.json()
-
-    for item in j['data']:
-        name = item['metadata']['name']
-        description = item['metadata']['description']
-        link = item['metadata']['url']
-        v = Video(name = name, description = description, link = link)
-        saveVideo(v)
-
-    startIndex += count
-
+    except KeyboardInterrupt:
+        # serverThread.join()
+        print('')
+        sys.exit()

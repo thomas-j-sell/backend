@@ -35,18 +35,14 @@ db.create_tables([Article, Video], True)
 def saveArticle(article):
     try:
         Article.get(Article.headline == article.headline)
-        print('article already saved')
     except:
         article.save()
-        print('article saved')
 
 def saveVideo(video):
     try:
         Video.get(Video.name == video.name)
-        print('video already saved')
     except:
         video.save()
-        print('video saved')
 
 def getArticles():
     return Article.select()

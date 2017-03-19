@@ -1,33 +1,31 @@
-from feedgen.feed import FeedGenerator
-from db import Article, Video, getArticles, getVideos
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from os import curdir, sep
 
-fg = FeedGenerator()
-fg.id('http://ign.com')
-fg.title('IGN Testfeed')
-fg.author({'name':'Tom Sell', 'email':'tom@example.com'})
-fg.link(href='http://example.com', rel='alternate')
-fg.subtitle('The Code Foo Feed!')
-fg.language('en')
+port_number = 8080
 
-count = 1
-articles = getArticles()
-for article in articles:
-    fe = fg.add_entry()
-    fe.id('http://codefoofeed.com/article/' + str(count))
-    fe.title(article.headline)
-    fe.description(article.subHeadline)
-    fe.link(href=article.link, rel='alternate')
-    count += 1
+class myHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        try:
+            if self.path == '/rss':
+                self.path = "/rss.xml"
+                f = open(curdir + sep + self.path)
+                self.send_response(200)
+                self.send_header('Content-type','application/rss+xml')
+                self.end_headers()
+                self.wfile.write(f.read())
+                f.close()
 
-count = 1
-videos = getVideos()
-for video in videos:
-    fe = fg.add_entry()
-    fe.id('http://codefoofeed.com/video/' + str(count))
-    fe.title(video.name)
-    fe.description(video.description)
-    fe.link(href=video.link, rel='alternate')
-    count += 1
+            return
 
-rssfeed = fg.rss_str(pretty=True)
-print(rssfeed)
+        except IOError:
+            self.send_error(404, 'File Not Found: %s' % self.path)
+
+def startServer():
+    try:
+        server = HTTPServer(('', port_number), myHandler)
+        print('Started httpserver on port ', str(port_number))
+        server.serve_forever()
+
+    except KeyboardInterrupt:
+        server.socket.close()
+
